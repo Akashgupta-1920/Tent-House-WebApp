@@ -1,45 +1,63 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useRef, useEffect } from 'react';
 import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+  BackHandler,
+  SafeAreaView,
+  StatusBar,
+  ToastAndroid,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+export default function App() {
+  const webviewRef = useRef(null);
+  const canGoBackRef = useRef(false);
+  let backPressCount = 0;
+
+  // Handle Android Back Button
+  useEffect(() => {
+    const backAction = () => {
+      if (canGoBackRef.current) {
+        webviewRef.current.goBack();
+        return true;
+      } else {
+        if (backPressCount === 0) {
+          backPressCount++;
+          ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+
+          setTimeout(() => {
+            backPressCount = 0; // reset counter after 2 sec
+          }, 2000);
+
+          return true;
+        }
+        BackHandler.exitApp(); // exit on second press
+        return true;
+      }
+    };
+
+    const handler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => handler.remove();
+  }, []);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
+    <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
+      <WebView
+        ref={webviewRef}
+        source={{ uri: 'http://inv.webloxic.cloud/' }}
+        style={{ flex: 1 }}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        mixedContentMode="always"
+        onNavigationStateChange={navState => {
+          canGoBackRef.current = navState.canGoBack;
+        }}
+        startInLoadingState={true}
       />
-    </View>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;
